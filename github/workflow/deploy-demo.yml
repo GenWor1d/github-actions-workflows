@@ -1,0 +1,17 @@
+# 其他项目引用可重用工作流的示例配置
+name: 部署项目
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  deploy:
+    # 引用可重用工作流
+    # 使用格式: {owner}/{repo}/.github/workflows/{workflow_file.yml}@{ref}
+    uses: your-username/actions-cicd/.github/workflows/deploy.yml@main
+    # 如果需要传递自定义参数
+    with:
+      branch: ${{ github.ref_name }}
+      working-directory: deployment

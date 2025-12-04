@@ -1,0 +1,6 @@
+# 通用Git忽略规则
+
+# IDE/编辑器文件
+.vscode/
+.idea/
+.hbuildx
