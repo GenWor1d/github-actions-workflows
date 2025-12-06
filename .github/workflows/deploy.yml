@@ -25,29 +25,66 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
         
-      - name: 执行部署
+      - name: 设置环境变量
         working-directory: ${{ inputs.working-directory }}
         run: |
+          # 生成包含日期时间的镜像标签
+          echo "IMAGE_TAG=${{ inputs.branch }}-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
           
-          # 停止并删除容器
-          docker compose down || true
+          # 获取项目目录名作为镜像名称
+          echo "PROJECT_NAME=$(basename $GITHUB_WORKSPACE)" >> $GITHUB_ENV
           
+          # 设置分支名称环境变量，供后续compose使用
+          echo "BRANCH_NAME=${{ inputs.branch }}" >> $GITHUB_ENV
+          
+      - name: 构建Docker镜像
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          docker compose build
+          
+      - name: 启动新容器（保留旧容器）
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          # 使用新的容器名称启动新容器，与旧容器并行运行
+          CONTAINER_NAME=${{ env.PROJECT_NAME }}-new \
+          docker compose up -d
+          
+      - name: 验证新容器是否正常运行
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          # 等待容器启动
+          sleep 5
+          
+          # 检查新容器状态
+          if docker ps --filter "name=${{ env.PROJECT_NAME }}-new" --filter "status=running" | grep -q "${{ env.PROJECT_NAME }}-new"; then
+            echo "新容器已成功启动"
+          else
+            echo "新容器启动失败" && exit 1
+          fi
+          
+      - name: 替换容器（先停止旧容器，再重命名新容器）
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          # 停止旧容器
+          docker stop ${{ env.PROJECT_NAME }} || true
+          
+          # 删除旧容器
+          docker rm -f ${{ env.PROJECT_NAME }} || true
+          
+          # 重命名新容器为正式名称
+          docker rename ${{ env.PROJECT_NAME }}-new ${{ env.PROJECT_NAME }}
+          
+          # 确保新容器在运行状态
+          docker start ${{ env.PROJECT_NAME }} || true
+          
+      - name: 清理旧镜像
+        working-directory: ${{ inputs.working-directory }}
+        run: |
           # 清理7天前的旧镜像
-          docker images $(basename $GITHUB_WORKSPACE) \
+          docker images ${{ env.PROJECT_NAME }} \
             --filter "before=7 days ago" \
             --format "{{.Repository}}:{{.Tag}}" | xargs -r docker rmi || true
           
-          
-          # 生成包含日期时间的镜像标签
-          export IMAGE_TAG=${{ inputs.branch }}-$(date +%Y%m%d-%H%M%S)
-          
-          # 获取项目目录名作为镜像名称
-          export PROJECT_NAME=$(basename $GITHUB_WORKSPACE)
-          
-          # 设置分支名称环境变量，供后续compose使用
-          export BRANCH_NAME=${{ inputs.branch }}
-          
-          # 构建镜像并启动容器
-          docker compose up -d --build
-          
-          echo "✅ 部署完成 - 镜像: $PROJECT_NAME:$IMAGE_TAG"
+      - name: 部署完成
+        run: |
+          echo "✅ 部署完成 - 镜像: ${{ env.PROJECT_NAME }}:${{ env.IMAGE_TAG }}"
