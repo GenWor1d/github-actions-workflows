@@ -36,6 +36,9 @@ jobs:
           
           # 设置分支名称环境变量，供后续compose使用
           echo "BRANCH_NAME=${{ inputs.branch }}" >> $GITHUB_ENV
+
+          # 设置网络名称环境变量，供后续compose使用
+          export NETWORK_NAME=gen-world-bridge
           
       - name: 构建Docker镜像
         working-directory: ${{ inputs.working-directory }}
