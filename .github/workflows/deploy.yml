@@ -30,7 +30,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: |
           # 生成包含日期时间的镜像标签
-          echo "IMAGE_TAG=${{ inputs.branch }}-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ inputs.branch }}-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
           
           # 获取项目目录名作为镜像名称
           echo "PROJECT_NAME=$(basename $GITHUB_WORKSPACE)" >> $GITHUB_ENV
