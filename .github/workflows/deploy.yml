@@ -1,6 +1,6 @@
 # 通用部署配置 - 可重用工作流
 # 根据分支自动生成镜像标签，无需环境配置文件
-name: 通用部署
+name: 通用部署-${{ github.run_number }}
 on:
   workflow_call:
     # 定义可选输入参数
