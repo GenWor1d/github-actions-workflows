@@ -27,6 +27,6 @@ services:
 
 # 网络定义
 networks:
-  ${NETWORK_NAME}:
+  app_network:  # 使用固定 key
     external: true
-    name: ${NETWORK_NAME}
+    name: ${NETWORK_NAME}  # 在 name 属性中使用变量
