@@ -7,13 +7,25 @@ services:
       context: ..
       # Dockerfile文件路径，相对于context路径
       dockerfile: deployment/Dockerfile
+      # 构建参数：根据环境设置构建模式和目标平台
+      args:
+        BRANCH_NAME: ${BRANCH_NAME:-dev}
+        BUILD_TARGET: ${BUILD_TARGET:-h5}
     # 镜像名称和标签
     # 使用项目目录名作为镜像名称
     # 使用IMAGE_TAG环境变量作为标签，如果未设置则默认为latest
     image: ${PROJECT_NAME:-app}:${IMAGE_TAG:-latest}
-    container_name: ${CONTAINER_NAME:-${PROJECT_NAME:-app}}
+    container_name: ${PROJECT_NAME:-app}
     # 重启策略：除非手动停止，否则总是重启容器
     restart: unless-stopped
     # 端口映射：将主机的80端口映射到容器的80端口
     ports:
-      - "80:80"
+      - "8080:80"
+    # 网络配置：加入指定的网络
+    networks:
+      - ${NETWORK_NAME}
+
+# 网络定义
+networks:
+  ${NETWORK_NAME}:
+    external: true
