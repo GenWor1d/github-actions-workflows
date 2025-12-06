@@ -44,6 +44,9 @@ jobs:
           # 获取项目目录名作为镜像名称
           export PROJECT_NAME=$(basename $GITHUB_WORKSPACE)
           
+          # 设置分支名称环境变量，供后续compose使用
+          export BRANCH_NAME=${{ inputs.branch }}
+          
           # 构建镜像并启动容器
           docker compose up -d --build
           
