@@ -23,7 +23,7 @@ services:
       - "8080:80"
     # 网络配置：加入指定的网络
     networks:
-      - ${NETWORK_NAME}
+      - app_network
 
 # 网络定义
 networks:
