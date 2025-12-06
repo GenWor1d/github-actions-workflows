@@ -23,13 +23,16 @@ services:
       - "8080:80"
     # 目录挂载配置示例
     # volumes:
-    #   # 挂载应用配置文件
-    #   - ./config:/app/config:ro
-    #   # 挂载日志目录
-    #   - ./logs:/app/logs
-    #   # 挂载数据目录
-    #   - ./data:/app/data
-    
+    #   # 相对路径挂载：相对于运行docker-compose命令的目录
+    #   - ./config:/app/config:ro          # 项目目录下的config目录
+    #   - ./logs:/app/logs                 # 项目目录下的logs目录
+    #   - ./data:/app/data                 # 项目目录下的data目录
+    #   
+    #   # 绝对路径挂载：固定指向服务器上的具体目录
+    #   - /opt/app/config:/app/config:ro   # 服务器上的配置目录
+    #   - /var/log/app:/app/logs           # 服务器上的日志目录
+    #   - /var/lib/app/data:/app/data      # 服务器上的数据目录
+  
     # 网络配置：加入指定的网络
     networks:
       - app_network
