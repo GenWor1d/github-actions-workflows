@@ -40,6 +40,11 @@ jobs:
           # 设置网络名称环境变量，供后续compose使用
           echo "NETWORK_NAME=gen-world-bridge" >> $GITHUB_ENV
           
+      - name: 创建外部网络（如果不存在）
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          docker network create --driver bridge ${{ env.NETWORK_NAME }} || true
+          
       - name: 构建Docker镜像
         working-directory: ${{ inputs.working-directory }}
         run: |
@@ -48,8 +53,6 @@ jobs:
       - name: 启动新容器（保留旧容器）
         working-directory: ${{ inputs.working-directory }}
         run: |
-          # 创建外部网络（如果不存在）
-          docker network create --driver bridge ${{ env.NETWORK_NAME }} || true
           # 使用临时容器名称启动新容器
           CONTAINER_NAME=${{ env.PROJECT_NAME }}-new docker compose up -d
           
