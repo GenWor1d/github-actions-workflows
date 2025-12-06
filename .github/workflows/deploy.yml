@@ -19,7 +19,7 @@ on:
 
 jobs:
   deploy:
-    name: 部署${{ inputs.branch }}环境--$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)
+    name: 部署${{ inputs.branch }}环境--${{ github.run_id }}-${{ github.run_number }}
     runs-on: ${{ inputs.branch }}
     
     steps:
