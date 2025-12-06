@@ -1,6 +1,7 @@
 # 通用部署配置 - 可重用工作流
 # 根据分支自动生成镜像标签，无需环境配置文件
-name: 通用部署-${{ github.run_number }}
+# name: 通用部署-${{ github.run_number }}-${{ github.run_attempt }}
+name: 通用部署
 on:
   workflow_call:
     # 定义可选输入参数
@@ -18,7 +19,7 @@ on:
 
 jobs:
   deploy:
-    name: 部署${{ inputs.branch }}环境
+    name: 部署${{ inputs.branch }}环境-${{ github.run_number }}
     runs-on: ${{ inputs.branch }}
     
     steps:
