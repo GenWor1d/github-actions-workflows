@@ -75,12 +75,29 @@ jobs:
           
       - name: 清理旧镜像
         if: success()
-        uses: cattle-ops/actions-docker-image-clean@v1
-        with:
-          # 必须：要清理的镜像名称 - 使用动态生成的项目名
-          image-name: ${{ env.PROJECT_NAME }}
-          # 可选：要保留的最新镜像数量，默认为5
-          keep-latest: 3
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          # 清理旧镜像，保留最新的3个
+          IMAGE_NAME=${{ env.PROJECT_NAME }}
+          KEEP_LATEST=3
+          
+          # 获取所有匹配的镜像ID，按创建时间倒序排序
+          IMAGES=$(docker images --filter=reference="$IMAGE_NAME:*" --format="{{.ID}}" --no-trunc | sort -r)
+          
+          # 计算需要删除的镜像数量
+          TOTAL_IMAGES=$(echo "$IMAGES" | wc -l)
+          IMAGES_TO_DELETE=$((TOTAL_IMAGES - KEEP_LATEST))
+          
+          if [ $IMAGES_TO_DELETE -gt 0 ]; then
+            # 获取需要删除的镜像ID
+            IMAGES_TO_DELETE=$(echo "$IMAGES" | tail -n $IMAGES_TO_DELETE)
+            
+            echo "删除 $IMAGES_TO_DELETE 个旧镜像..."
+            docker rmi -f $IMAGES_TO_DELETE
+            echo "旧镜像清理完成"
+          else
+            echo "无需清理，当前镜像数量 ($TOTAL_IMAGES) 未超过保留数量 ($KEEP_LATEST)"
+          fi
 
       - name: 部署完成
         run: |
