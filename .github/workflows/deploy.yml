@@ -74,13 +74,14 @@ jobs:
           docker rename ${{ env.PROJECT_NAME }}-new ${{ env.PROJECT_NAME }}
           
       - name: 清理旧镜像
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          # 清理旧镜像（保留最新5个版本）
-          docker images ${{ env.PROJECT_NAME }}:${{ inputs.branch }}-* --sort=-created --format "{{.Repository}}:{{.Tag}}" | tail -n +6 | xargs -r docker rmi || true
-          # 清理悬挂镜像
-          docker rmi $(docker images -f dangling=true -q) 2>/dev/null || true
-          
+        if: success()
+        uses: cattle-ops/actions-docker-image-clean@v1
+        with:
+          # 必须：要清理的镜像名称 - 使用动态生成的项目名
+          image-name: ${{ env.PROJECT_NAME }}
+          # 可选：要保留的最新镜像数量，默认为5
+          keep-latest: 3
+
       - name: 部署完成
         run: |
           echo "✅ 部署完成 - 镜像: ${{ env.PROJECT_NAME }}:${{ env.IMAGE_TAG }}"
