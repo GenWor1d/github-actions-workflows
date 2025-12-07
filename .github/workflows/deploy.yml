@@ -19,7 +19,7 @@ on:
 
 jobs:
   deploy:
-    name: 部署${{ inputs.branch }}环境--${{ github.run_id }}-${{ github.run_number }}
+    name: 部署${{ inputs.branch }}环境-${{ github.run_number }}
     runs-on: ${{ inputs.branch }}
     
     steps:
