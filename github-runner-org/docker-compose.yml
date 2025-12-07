@@ -1,16 +1,20 @@
 services:
   github-runner:
     image: myoung34/github-runner:latest
-    container_name: github-runner-${RUNNER_SCOPE}-${RUNNER_LABELS}
+    container_name: github-runner-${RUNNER_SCOPE}-${LABELS}
     restart: unless-stopped
     env_file:
       - .env
     environment:
       # 仅在需要覆盖.env文件中的值时才在这里指定
-      RUNNER_NAME: "docker-runner-${RUNNER_LABELS}"  # 组织级别runner名称格式
+      RUNNER_NAME: "docker-runner-${LABELS}"  # 组织级别runner名称格式
     volumes:
+      # 挂载Docker socket（允许在runner中运行Docker命令）
       - /var/run/docker.sock:/var/run/docker.sock
+      
+      # 持久化数据
       - ./runner-data:/data
     
+    # 资源限制
     mem_limit: "2g"
     cpus: "1.0"
