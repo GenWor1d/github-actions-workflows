@@ -22,7 +22,7 @@ jobs:
       - name: 生成.env文件
         run: |
           echo "[DEBUG] 开始生成环境变量文件..."
-          IMAGE_TAG="${{ inputs.branch }}-$(date +%Y%m%d-%H%M%S)"
+          IMAGE_TAG="${{ inputs.branch }}-$(TZ='Asia/Shanghai' date +%Y%m%d-%H%M%S)"
           PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')
           
           echo "[DEBUG] 分支: ${{ inputs.branch }}"
