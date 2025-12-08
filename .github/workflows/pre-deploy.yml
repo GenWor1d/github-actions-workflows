@@ -31,4 +31,4 @@ jobs:
             echo "错误：预部署脚本文件不存在"
             ls -la ./deployment/scripts/
             exit 1
-          finame: 自定义预部署任务
+          fi
