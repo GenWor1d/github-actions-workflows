@@ -26,7 +26,7 @@ jobs:
     
   build:
     name: 构建镜像
-    needs: setup
+    needs: network
     uses: ./.github/workflows/docker-image.yml
     
   deploy:
