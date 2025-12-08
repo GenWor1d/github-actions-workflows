@@ -32,8 +32,8 @@ jobs:
           # 生成包含日期时间的镜像标签
           echo "IMAGE_TAG=${{ inputs.branch }}-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
           
-          # 获取项目目录名作为镜像名称
-          echo "PROJECT_NAME=$(basename $GITHUB_WORKSPACE)" >> $GITHUB_ENV
+          # 获取项目目录名作为镜像名称，并转换为小写
+          echo "PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           
           # 设置分支名称环境变量，供后续compose使用
           echo "BRANCH_NAME=${{ inputs.branch }}" >> $GITHUB_ENV
