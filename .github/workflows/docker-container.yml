@@ -25,8 +25,8 @@ jobs:
           ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
           NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
           
-          # 启动新容器
-          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose up -d
+          # 启动新容器，使用env-file参数确保所有环境变量都被加载
+          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file $GITHUB_WORKSPACE/.env up -d
           
           # 等待容器启动并验证
           sleep 5
