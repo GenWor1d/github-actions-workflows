@@ -15,7 +15,7 @@ jobs:
     # {repo} 表示仓库名称（此处为 github-actions-workflows）
     # .github/workflows/{workflow_file.yml} 表示工作流文件路径（此处为 deploy.yml）
     # @{ref} 表示引用版本（动态使用当前分支）
-    uses: GenWor1d/github-actions-workflows/.github/workflows/deploy.yml@${{ github.ref_name }}
+    uses: GenWor1d/github-actions-workflows/.github/workflows/deploy.yml@dev
     # 如果需要传递自定义参数
     with:
       branch: ${{ github.ref_name }}
