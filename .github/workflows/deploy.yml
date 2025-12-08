@@ -24,10 +24,24 @@ jobs:
     needs: setup
     runs-on: ${{ github.ref_name }}
     steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 1
+      
       - name: 执行预部署脚本
         run: |
-          chmod +x ${{ github.workspace }}/deployment/scripts/pre-deploy.sh
-          ${{ github.workspace }}/deployment/scripts/pre-deploy.sh
+          # 先检查脚本文件是否存在
+          if [ -f "./deployment/scripts/pre-deploy.sh" ]; then
+            echo "找到预部署脚本文件"
+            chmod +x ./deployment/scripts/pre-deploy.sh
+            ./deployment/scripts/pre-deploy.sh
+          else
+            echo "预部署脚本文件不存在"
+            ls -la ./deployment/scripts/
+            exit 1
+          fi
 
   network:
     name: 配置网络
