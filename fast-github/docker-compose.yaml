@@ -1,0 +1,10 @@
+version: "3.7"
+services:
+  fastgithub:
+    image: slcnx/fastgithub
+    container_name: fastgithub
+    restart: always
+    volumes:
+    - cacert:/fastgithub/cacert/
+volumes:
+  cacert: {}
