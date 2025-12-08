@@ -24,8 +24,8 @@ jobs:
       - name: 部署容器
         run: |
           # 保存原始容器名称
-          ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
-          NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
+          export ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
+          export NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
           
           echo "[DEBUG] 开始部署: $ORIGINAL_CONTAINER_NAME -> $NEW_CONTAINER_NAME"
           
