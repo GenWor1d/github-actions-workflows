@@ -9,6 +9,10 @@ echo "========================================"
 echo "开始执行自定义预部署脚本"
 echo "当前时间: $(date)"
 echo "当前目录: $(pwd)"
+# 直接搜索并打印 .env 文件路径（含完整路径）
+ENV_FILE=$(find "$GITHUB_WORKSPACE" -name ".env" -type f 2>/dev/null | head -n 1)
+echo "[DEBUG] 搜索到的 .env 文件完整路径: $ENV_FILE"
+
 echo "========================================"
 
 # 加载环境变量
