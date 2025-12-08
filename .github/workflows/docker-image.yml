@@ -1,0 +1,29 @@
+name: Docker镜像管理
+on:
+  workflow_call:
+    inputs:
+      action:
+        required: false
+        type: string
+        default: 'build'
+      working-directory:
+        required: false
+        type: string
+        default: 'deployment'
+
+jobs:
+  image:
+    runs-on: ${{ github.ref_name }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - name: 加载环境变量
+        run: |
+          source $GITHUB_WORKSPACE/.env || exit 1
+      
+      - name: 构建镜像
+        if: inputs.action == 'build'
+        run: |
+          docker compose build

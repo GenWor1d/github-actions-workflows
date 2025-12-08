@@ -1,4 +1,5 @@
-# 通用Docker Compose配置
+# 通用Docker Compose配置 - 优雅变量管理
+# 环境变量由.setup-env.yml统一生成到.env文件
 services:
   app:
     # 构建配置
@@ -7,38 +8,28 @@ services:
       context: ..
       # Dockerfile文件路径，相对于context路径
       dockerfile: deployment/Dockerfile
-      # 构建参数：根据环境设置构建模式和目标平台
+      # 构建参数：从.env文件读取
       args:
         BRANCH_NAME: ${BRANCH_NAME:-dev}
         BUILD_TARGET: ${BUILD_TARGET:-h5}
-    # 镜像名称和标签
-    # 使用项目目录名作为镜像名称
-    # 使用IMAGE_TAG环境变量作为标签，如果未设置则默认为latest
-    image: ${PROJECT_NAME:-app}:${IMAGE_TAG:-latest}
-    container_name: ${CONTAINER_NAME:-${PROJECT_NAME:-app}}
+    
+    # 镜像名称和标签 - 直接使用.env中的变量
+    image: ${PROJECT_NAME}:${IMAGE_TAG}
+    container_name: ${CONTAINER_NAME}
+    
     # 重启策略：除非手动停止，否则总是重启容器
     restart: unless-stopped
-    # 端口映射：将主机的80端口映射到容器的80端口
+    
+    # 端口映射
     ports:
       - "8080:80"
-    # 目录挂载配置示例
-    # volumes:
-    #   # 相对路径挂载：相对于运行docker-compose命令的目录
-    #   - ./config:/app/config:ro          # 项目目录下的config目录
-    #   - ./logs:/app/logs                 # 项目目录下的logs目录
-    #   - ./data:/app/data                 # 项目目录下的data目录
-    #   
-    #   # 绝对路径挂载：固定指向服务器上的具体目录
-    #   - /opt/app/config:/app/config:ro   # 服务器上的配置目录
-    #   - /var/log/app:/app/logs           # 服务器上的日志目录
-    #   - /var/lib/app/data:/app/data      # 服务器上的数据目录
-  
+    
     # 网络配置：加入指定的网络
     networks:
       - app_network
 
 # 网络定义
 networks:
-  app_network:  # 使用固定 key
+  app_network:
     external: true
-    name: ${NETWORK_NAME}  # 在 name 属性中使用变量
+    name: ${NETWORK_NAME}

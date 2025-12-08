@@ -1,0 +1,33 @@
+name: 环境变量设置
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+      working-directory:
+        required: false
+        type: string
+        default: 'deployment'
+
+jobs:
+  setup:
+    runs-on: ${{ github.ref_name }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - name: 生成.env文件
+        run: |
+          IMAGE_TAG="${{ inputs.branch }}-$(date +%Y%m%d-%H%M%S)"
+          PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')
+          
+          cat > $GITHUB_WORKSPACE/.env << EOF
+          BRANCH_NAME=${{ inputs.branch }}
+          PROJECT_NAME=$PROJECT_NAME
+          IMAGE_TAG=$IMAGE_TAG
+          CONTAINER_NAME=$PROJECT_NAME
+          NETWORK_NAME=gen-world-bridge
+          EOF

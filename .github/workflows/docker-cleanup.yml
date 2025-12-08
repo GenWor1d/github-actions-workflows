@@ -1,0 +1,21 @@
+name: Docker镜像清理
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        required: true
+        type: string
+      keep-count:
+        required: false
+        type: string
+        default: '2'
+
+jobs:
+  cleanup:
+    runs-on: ${{ github.ref_name }}
+    steps:
+      - name: 清理镜像
+        run: |
+          docker images ${{ inputs.image-name }} --format "{{.Repository}}:{{.Tag}}" | \
+          tail -n +$((${{ inputs.keep-count }} + 1)) | \
+          xargs -r docker rmi -f

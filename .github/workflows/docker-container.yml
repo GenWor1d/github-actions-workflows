@@ -1,0 +1,45 @@
+name: Docker容器部署
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: false
+        type: string
+        default: 'deployment'
+
+jobs:
+  deploy:
+    runs-on: ${{ github.ref_name }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - name: 加载环境变量
+        run: |
+          source $GITHUB_WORKSPACE/.env || exit 1
+      
+      - name: 部署容器
+        run: |
+          # 保存原始容器名称
+          ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
+          NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
+          
+          # 启动新容器
+          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose up -d
+          
+          # 等待容器启动并验证
+          sleep 5
+          if ! docker ps --filter "name=$NEW_CONTAINER_NAME" --filter "status=running" -q; then
+            echo "新容器启动失败"
+            docker logs "$NEW_CONTAINER_NAME"
+            docker compose down
+            exit 1
+          fi
+          
+          # 替换旧容器
+          docker stop "$ORIGINAL_CONTAINER_NAME" || true
+          docker rm -f "$ORIGINAL_CONTAINER_NAME" || true
+          docker rename "$NEW_CONTAINER_NAME" "$CONTAINER_NAME"
+          
+          echo "无缝部署完成"

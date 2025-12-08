@@ -1,104 +1,42 @@
-# 通用部署配置 - 可重用工作流
-# 根据分支自动生成镜像标签，无需环境配置文件
-# name: 通用部署-${{ github.run_number }}-${{ github.run_attempt }}
 name: 通用部署
 on:
   workflow_call:
-    # 定义可选输入参数
     inputs:
       branch:
-        description: '部署分支'
         required: false
         type: string
         default: ${{ github.ref_name }}
       working-directory:
-        description: '部署脚本工作目录'
         required: false
         type: string
         default: 'deployment'
 
 jobs:
-  deploy:
-    name: 部署${{ inputs.branch }}环境-${{ github.run_number }}
-    runs-on: ${{ inputs.branch }}
+  setup:
+    name: 环境配置
+    uses: ./.github/workflows/setup-env.yml
+    with:
+      branch: ${{ inputs.branch }}
+      working-directory: ${{ inputs.working-directory }}
     
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-        
-      - name: 设置环境变量
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          # 生成包含日期时间的镜像标签
-          echo "IMAGE_TAG=${{ inputs.branch }}-$(TZ=Asia/Shanghai date +%Y%m%d-%H%M%S)" >> $GITHUB_ENV
-          
-          # 获取项目目录名作为镜像名称，并转换为小写
-          echo "PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-          
-          # 设置分支名称环境变量，供后续compose使用
-          echo "BRANCH_NAME=${{ inputs.branch }}" >> $GITHUB_ENV
-
-          # 设置网络名称环境变量，供后续compose使用
-          echo "NETWORK_NAME=gen-world-bridge" >> $GITHUB_ENV
-          
-      - name: 创建外部网络（如果不存在）
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          docker network create --driver bridge ${{ env.NETWORK_NAME }} || true
-          
-      - name: 构建Docker镜像
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          docker compose build
-          
-      - name: 启动新容器（保留旧容器）
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          # 使用临时容器名称启动新容器
-          CONTAINER_NAME=${{ env.PROJECT_NAME }}-new docker compose up -d
-          
-      - name: 验证新容器
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          sleep 5
-          if ! docker ps --filter "name=${{ env.PROJECT_NAME }}-new" --filter "status=running" -q; then
-            echo "新容器启动失败" && docker logs ${{ env.PROJECT_NAME }}-new && exit 1
-          fi
-          
-      - name: 替换容器
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          # 替换旧容器为新容器
-          docker stop ${{ env.PROJECT_NAME }} || true
-          docker rm -f ${{ env.PROJECT_NAME }} || true
-          docker rename ${{ env.PROJECT_NAME }}-new ${{ env.PROJECT_NAME }}
-          
-      - name: 清理旧镜像
-        if: success()
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          # 清理旧镜像，保留最新的3个
-          IMAGE_NAME=${{ env.PROJECT_NAME }}
-          KEEP_LATEST=3
-          
-          # 获取所有匹配的镜像ID，按创建时间倒序排序
-          IMAGES=$(docker images --filter=reference="$IMAGE_NAME:*" --format="{{.ID}}" --no-trunc | sort -r)
-          
-          # 计算需要删除的镜像数量
-          TOTAL_IMAGES=$(echo "$IMAGES" | wc -l)
-          IMAGES_TO_DELETE=$((TOTAL_IMAGES - KEEP_LATEST))
-          
-          if [ $IMAGES_TO_DELETE -gt 0 ]; then
-            # 获取需要删除的镜像ID
-            IMAGES_TO_DELETE=$(echo "$IMAGES" | tail -n $IMAGES_TO_DELETE)
-            
-            echo "删除 $IMAGES_TO_DELETE 个旧镜像..."
-            docker rmi -f $IMAGES_TO_DELETE
-            echo "旧镜像清理完成"
-          else
-            echo "无需清理，当前镜像数量 ($TOTAL_IMAGES) 未超过保留数量 ($KEEP_LATEST)"
-          fi
-
-      - name: 部署完成
-        run: |
-          echo "✅ 部署完成 - 镜像: ${{ env.PROJECT_NAME }}:${{ env.IMAGE_TAG }}"
+  network:
+    name: 配置网络
+    needs: setup
+    uses: ./.github/workflows/docker-network.yml
+    
+  build:
+    name: 构建镜像
+    needs: setup
+    uses: ./.github/workflows/docker-image.yml
+    
+  deploy:
+    name: 部署容器
+    needs: [setup, network, build]
+    uses: ./.github/workflows/docker-container.yml
+    
+  cleanup:
+    name: 清理镜像
+    needs: deploy
+    uses: ./.github/workflows/docker-cleanup.yml
+    with:
+      image-name: ${{ github.repository }}

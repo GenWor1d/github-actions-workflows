@@ -1,0 +1,29 @@
+name: Docker网络管理
+on:
+  workflow_call:
+    inputs:
+      action:
+        required: false
+        type: string
+        default: 'create'
+      working-directory:
+        required: false
+        type: string
+        default: 'deployment'
+
+jobs:
+  network:
+    runs-on: ${{ github.ref_name }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    
+    steps:
+      - name: 加载环境变量
+        run: |
+          source $GITHUB_WORKSPACE/.env || exit 1
+      
+      - name: 创建网络
+        if: inputs.action == 'create'
+        run: |
+          docker network create $NETWORK_NAME || echo "网络已存在"
