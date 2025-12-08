@@ -19,9 +19,16 @@ jobs:
       branch: ${{ inputs.branch }}
       working-directory: ${{ inputs.working-directory }}
     
+  pre-deploy:
+    name: 执行自定义预部署任务
+    needs: setup
+    uses: ./deployment/pre-deploy.yml
+    with:
+      working-directory: ${{ inputs.working-directory }}
+
   network:
     name: 配置网络
-    needs: setup
+    needs: pre-deploy
     uses: ./.github/workflows/docker-network.yml
     
   build:
