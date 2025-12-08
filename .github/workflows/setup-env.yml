@@ -21,8 +21,13 @@ jobs:
     steps:
       - name: 生成.env文件
         run: |
+          echo "[DEBUG] 开始生成环境变量文件..."
           IMAGE_TAG="${{ inputs.branch }}-$(date +%Y%m%d-%H%M%S)"
           PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')
+          
+          echo "[DEBUG] 分支: ${{ inputs.branch }}"
+          echo "[DEBUG] 项目名称: $PROJECT_NAME"
+          echo "[DEBUG] 镜像标签: $IMAGE_TAG"
           
           cat > $GITHUB_WORKSPACE/.env << EOF
           BRANCH_NAME=${{ inputs.branch }}
@@ -31,3 +36,6 @@ jobs:
           CONTAINER_NAME=$PROJECT_NAME
           NETWORK_NAME=gen-world-bridge
           EOF
+          
+          echo "[DEBUG] 环境变量文件已生成:"
+          cat $GITHUB_WORKSPACE/.env

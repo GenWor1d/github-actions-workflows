@@ -16,6 +16,18 @@ jobs:
     steps:
       - name: 清理镜像
         run: |
+          echo "[DEBUG] 开始清理Docker镜像..."
+          echo "[DEBUG] 镜像名称: ${{ inputs.image-name }}"
+          echo "[DEBUG] 保留数量: ${{ inputs.keep-count }}"
+          
+          echo "[DEBUG] 当前镜像列表:"
+          docker images ${{ inputs.image-name }} --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}"
+          
+          echo "[DEBUG] 开始清理旧镜像..."
           docker images ${{ inputs.image-name }} --format "{{.Repository}}:{{.Tag}}" | \
           tail -n +$((${{ inputs.keep-count }} + 1)) | \
           xargs -r docker rmi -f
+          
+          echo "[DEBUG] 清理后的镜像列表:"
+          docker images ${{ inputs.image-name }} --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}"
+          echo "[DEBUG] 镜像清理完成"

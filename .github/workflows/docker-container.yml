@@ -17,7 +17,9 @@ jobs:
     steps:
       - name: 加载环境变量
         run: |
-          source $GITHUB_WORKSPACE/.env || exit 1
+          echo "[DEBUG] 加载环境变量..."
+          source "$GITHUB_WORKSPACE/.env" || (echo "错误: 环境变量加载失败"; exit 1)
+          echo "[DEBUG] 容器名称: $CONTAINER_NAME"
       
       - name: 部署容器
         run: |
@@ -25,21 +27,25 @@ jobs:
           ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
           NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
           
-          # 启动新容器，使用env-file参数确保所有环境变量都被加载
-          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file $GITHUB_WORKSPACE/.env up -d
+          echo "[DEBUG] 开始部署: $ORIGINAL_CONTAINER_NAME -> $NEW_CONTAINER_NAME"
+          
+          # 启动新容器
+          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
           
           # 等待容器启动并验证
           sleep 5
           if ! docker ps --filter "name=$NEW_CONTAINER_NAME" --filter "status=running" -q; then
-            echo "新容器启动失败"
+            echo "[ERROR] 新容器启动失败"
             docker logs "$NEW_CONTAINER_NAME"
             docker compose down
             exit 1
           fi
+          
+          echo "[DEBUG] 新容器启动成功，开始替换旧容器"
           
           # 替换旧容器
           docker stop "$ORIGINAL_CONTAINER_NAME" || true
           docker rm -f "$ORIGINAL_CONTAINER_NAME" || true
           docker rename "$NEW_CONTAINER_NAME" "$CONTAINER_NAME"
           
-          echo "无缝部署完成"
+          echo "[DEBUG] 无缝部署完成"
