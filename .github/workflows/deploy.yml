@@ -22,9 +22,12 @@ jobs:
   pre-deploy:
     name: 执行自定义预部署任务
     needs: setup
-    uses: ./deployment/pre-deploy.yml
-    with:
-      working-directory: ${{ inputs.working-directory }}
+    runs-on: ${{ github.ref_name }}
+    steps:
+      - name: 执行预部署脚本
+        run: |
+          chmod +x ${{ github.workspace }}/deployment/scripts/pre-deploy.sh
+          ${{ github.workspace }}/deployment/scripts/pre-deploy.sh
 
   network:
     name: 配置网络
