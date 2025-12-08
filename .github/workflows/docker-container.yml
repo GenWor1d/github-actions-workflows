@@ -30,7 +30,7 @@ jobs:
           echo "[DEBUG] 开始部署: $ORIGINAL_CONTAINER_NAME -> $NEW_CONTAINER_NAME"
           
           # 启动新容器
-          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
+          export CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
           
           # 等待容器启动并验证
           sleep 5
