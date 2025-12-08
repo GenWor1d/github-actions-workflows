@@ -15,37 +15,38 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     
     steps:
-      - name: 加载环境变量
+      - name: 部署容器
         run: |
+          # 加载环境变量
           echo "[DEBUG] 加载环境变量..."
           source "$GITHUB_WORKSPACE/.env" || (echo "错误: 环境变量加载失败"; exit 1)
           echo "[DEBUG] 容器名称: $CONTAINER_NAME"
-      
-      - name: 部署容器
-        run: |
+          
           # 保存原始容器名称
-          export ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
-          export NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
+          ORIGINAL_CONTAINER_NAME="$CONTAINER_NAME"
+          NEW_CONTAINER_NAME="${CONTAINER_NAME}-new"
           
           echo "[DEBUG] 开始部署: $ORIGINAL_CONTAINER_NAME -> $NEW_CONTAINER_NAME"
           
           # 启动新容器
-          export CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
+          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
           
           # 等待容器启动并验证
-          sleep 5
-          if ! docker ps --filter "name=$NEW_CONTAINER_NAME" --filter "status=running" -q; then
+          sleep 10
+          if ! docker ps --filter "name=$NEW_CONTAINER_NAME" --filter "status=running" | grep -q "$NEW_CONTAINER_NAME"; then
             echo "[ERROR] 新容器启动失败"
-            docker logs "$NEW_CONTAINER_NAME"
+            docker logs "$NEW_CONTAINER_NAME" 2>/dev/null || echo "无法获取容器日志"
             docker compose down
             exit 1
           fi
           
           echo "[DEBUG] 新容器启动成功，开始替换旧容器"
           
-          # 替换旧容器
-          docker stop "$ORIGINAL_CONTAINER_NAME" || true
-          docker rm -f "$ORIGINAL_CONTAINER_NAME" || true
+          # 停止并删除旧容器
+          docker stop "$ORIGINAL_CONTAINER_NAME" 2>/dev/null || echo "旧容器不存在或已停止"
+          docker rm -f "$ORIGINAL_CONTAINER_NAME" 2>/dev/null || echo "旧容器删除失败或不存在"
+          
+          # 重命名新容器
           docker rename "$NEW_CONTAINER_NAME" "$CONTAINER_NAME"
           
           echo "[DEBUG] 无缝部署完成"

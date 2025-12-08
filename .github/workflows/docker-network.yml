@@ -19,14 +19,13 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     
     steps:
-      - name: 加载环境变量
-        run: |
-          echo "[DEBUG] 加载环境变量..."
-          source $GITHUB_WORKSPACE/.env || (echo "[ERROR] 环境变量加载失败"; exit 1)
-          echo "[DEBUG] 网络名称: $NETWORK_NAME"
-      
       - name: 创建网络
         if: inputs.action == 'create'
         run: |
+
+          echo "[DEBUG] 加载环境变量..."
+          source $GITHUB_WORKSPACE/.env || (echo "[ERROR] 环境变量加载失败"; exit 1)
+          echo "[DEBUG] 网络名称: $NETWORK_NAME"
+
           echo "[DEBUG] 创建Docker网络: $NETWORK_NAME"
           docker network create $NETWORK_NAME && echo "[DEBUG] 网络创建成功" || echo "[DEBUG] 网络已存在"
