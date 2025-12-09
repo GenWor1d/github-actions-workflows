@@ -13,7 +13,7 @@ on:
 
 jobs:
   deploy:
-    name: 完整部署流程
+    name: 部署${{ inputs.branch }}环境-${{ github.run_number }}
     runs-on: ${{ github.ref_name }}
     defaults:
       run:
