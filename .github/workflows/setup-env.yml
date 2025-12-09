@@ -19,6 +19,11 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     
     steps:
+      - name: 检出代码
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.branch }}
+
       - name: 生成.env文件
         run: |
           echo "[DEBUG] 开始生成环境变量文件..."
