@@ -12,36 +12,120 @@ on:
         default: 'deployment'
 
 jobs:
-  setup:
-    name: 环境配置
-    uses: ./.github/workflows/setup-env.yml
-    with:
-      branch: ${{ inputs.branch }}
-      working-directory: ${{ inputs.working-directory }}
-    
-  pre-deploy:
-    name: 执行自定义预部署任务
-    needs: setup
-    uses: ./.github/workflows/pre-deploy.yml
-
-  network:
-    name: 配置网络
-    needs: pre-deploy
-    uses: ./.github/workflows/docker-network.yml
-    
-  build:
-    name: 构建镜像
-    needs: network
-    uses: ./.github/workflows/docker-image.yml
-    
   deploy:
-    name: 部署容器
-    needs: [setup, network, build]
-    uses: ./.github/workflows/docker-container.yml
+    name: 完整部署流程
+    runs-on: ${{ github.ref_name }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
     
-  cleanup:
-    name: 清理镜像
-    needs: deploy
-    uses: ./.github/workflows/docker-cleanup.yml
-    with:
-      image-name: ${{ github.repository }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 生成环境变量
+        id: gen_env
+        run: |
+          echo "开始生成环境变量..."
+          IMAGE_TAG="${{ inputs.branch }}-$(TZ='Asia/Shanghai' date +%Y%m%d-%H%M%S)"
+          PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')
+          
+          echo "分支: ${{ inputs.branch }}"
+          echo "项目名称: $PROJECT_NAME"
+          echo "镜像标签: $IMAGE_TAG"
+          
+          # 保存到.env文件（供Docker Compose使用）
+          cat > $GITHUB_WORKSPACE/.env << EOF
+          BRANCH_NAME=${{ inputs.branch }}
+          PROJECT_NAME=$PROJECT_NAME
+          IMAGE_TAG=$IMAGE_TAG
+          CONTAINER_NAME=$PROJECT_NAME
+          NETWORK_NAME=gen-world-bridge
+          EOF
+          
+          # 从.env文件加载变量到环境中（供后续步骤使用）
+          set -a
+          source $GITHUB_WORKSPACE/.env
+          set +a
+          
+          # 将变量保存到GITHUB_ENV供后续步骤使用
+          grep -v '^#' $GITHUB_WORKSPACE/.env >> $GITHUB_ENV
+          
+          echo "环境变量文件已生成:"
+
+      - name: 配置网络
+        run: |
+          docker network create ${{ env.NETWORK_NAME }} && echo "[INFO] 网络创建成功" || echo "[INFO] 网络已存在"
+
+      - name: 执行预部署脚本
+        run: |
+          echo "项目名称: ${{ env.PROJECT_NAME }}"
+          echo "镜像标签: ${{ env.IMAGE_TAG }}"
+          
+          # 检查预部署脚本文件
+          PRE_DEPLOY_SCRIPT="./scripts/pre-deploy.sh"
+          if [ -f "$PRE_DEPLOY_SCRIPT" ]; then
+            echo "找到预部署脚本文件: $PRE_DEPLOY_SCRIPT"
+            chmod +x "$PRE_DEPLOY_SCRIPT"
+            "./$PRE_DEPLOY_SCRIPT"
+          else
+            echo "警告：预部署脚本文件不存在，跳过执行"
+            echo "当前目录内容:"
+            ls -la ./
+          fi
+
+      - name: 构建Docker镜像
+        run: |
+          echo "开始构建Docker镜像"
+          docker compose --env-file $GITHUB_WORKSPACE/.env build
+          echo "镜像构建完成"
+
+      - name: 部署容器
+        run: |
+          echo "开始部署容器"
+          echo "容器名称: ${{ env.CONTAINER_NAME }}"
+          
+          # 无缝部署
+          ORIGINAL_CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
+          NEW_CONTAINER_NAME="${ORIGINAL_CONTAINER_NAME}-new"
+          
+          echo "开始部署: $ORIGINAL_CONTAINER_NAME -> $NEW_CONTAINER_NAME"
+          
+          # 启动新容器
+          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
+          
+          # 等待容器启动并验证（使用健康检查代替硬编码sleep）
+          for i in {1..60}; do
+            if docker ps --filter "name=$NEW_CONTAINER_NAME" --filter "status=running" | grep -q "$NEW_CONTAINER_NAME"; then
+              echo "新容器启动成功"
+              break
+            fi
+            if [ $i -eq 60 ]; then
+              echo "[ERROR] 新容器启动超时"
+              docker logs "$NEW_CONTAINER_NAME" 2>/dev/null || echo "无法获取容器日志"
+              docker compose down
+              exit 1
+            fi
+            sleep 1
+          done
+          
+          echo "开始替换旧容器"
+          
+          # 停止并删除旧容器
+          docker stop "$ORIGINAL_CONTAINER_NAME" 2>/dev/null || echo "旧容器不存在或已停止"
+          docker rm -f "$ORIGINAL_CONTAINER_NAME" 2>/dev/null || echo "旧容器删除失败或不存在"
+          
+          # 重命名新容器
+          docker rename "$NEW_CONTAINER_NAME" "$ORIGINAL_CONTAINER_NAME"
+          
+          echo "无缝部署完成"
+
+      - name: 清理镜像
+        run: |
+          echo "开始清理Docker镜像..."
+
+          # 清理悬空镜像
+          echo "清理悬空镜像..."
+          docker image prune -f
+          
+          echo "镜像清理完成"
