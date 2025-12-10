@@ -122,7 +122,7 @@ jobs:
         run: |
           echo "开始清理Docker镜像..."
 
-          IMAGES_TO_REMOVE=$(docker images --format "table {{.Repository}}:{{.Tag}}" | grep "${{ env.PROJECT_NAME }}:${{ env.BRANCH_NAME }}" | tail -n +3)
+          IMAGES_TO_REMOVE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${{ env.PROJECT_NAME }}:${{ env.BRANCH_NAME }}-" | sort -r | tail -n +3)
           
           if [ -n "$IMAGES_TO_REMOVE" ]; then
             echo "将清理以下镜像："
