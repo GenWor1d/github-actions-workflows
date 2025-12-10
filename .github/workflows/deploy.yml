@@ -110,8 +110,12 @@ jobs:
           if [ -n "$IMAGES_TO_REMOVE" ]; then
             echo "将清理以下镜像："
             echo "$IMAGES_TO_REMOVE"
-            # 执行清理
-            docker rmi $IMAGES_TO_REMOVE
+            
+            # 逐个删除镜像，失败则跳过
+            for IMAGE in $IMAGES_TO_REMOVE; do
+              echo "清理镜像: $IMAGE"
+              docker rmi $IMAGE || echo "删除镜像 $IMAGE 失败，跳过"
+            done
           else
             echo "没有需要清理的镜像"
           fi
