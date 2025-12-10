@@ -99,8 +99,8 @@ jobs:
           # 直接部署：使用docker stop和docker rm停止并删除旧容器，再启动新容器
           echo "停止并删除旧容器..."
           
-          # 精确检查指定名称的容器是否存在
-          CONTAINER_EXISTS=$(docker container inspect -f '{{.Name}}' "${{ env.CONTAINER_NAME }}" 2>/dev/null)
+          # 检查指定名称的容器是否存在（使用|| true确保即使容器不存在也不会导致脚本失败）
+          CONTAINER_EXISTS=$(docker container inspect -f '{{.Name}}' "${{ env.CONTAINER_NAME }}" 2>/dev/null || true)
           if [ "$CONTAINER_EXISTS" == "/${{ env.CONTAINER_NAME }}" ]; then
             echo "[INFO] 找到容器: ${{ env.CONTAINER_NAME }}"
             docker stop "${{ env.CONTAINER_NAME }}" && echo "[INFO] 容器已停止"
