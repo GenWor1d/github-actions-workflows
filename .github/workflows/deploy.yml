@@ -98,7 +98,7 @@ jobs:
           
           # 直接部署：使用docker compose down停止并删除旧容器，再启动新容器
           echo "停止并删除旧容器..."
-          docker compose down --remove-orphans || echo "旧容器不存在或已停止删除"
+          docker compose --env-file "$GITHUB_WORKSPACE/.env" down --remove-orphans || echo "旧容器不存在或已停止删除"
           
           echo "启动新容器..."
           docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
