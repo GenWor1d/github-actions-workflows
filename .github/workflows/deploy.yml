@@ -85,38 +85,21 @@ jobs:
           echo "开始部署容器"
           echo "容器名称: ${{ env.CONTAINER_NAME }}"
           
-          # 无缝部署
-          ORIGINAL_CONTAINER_NAME="${{ env.CONTAINER_NAME }}"
-          NEW_CONTAINER_NAME="${ORIGINAL_CONTAINER_NAME}-new"
+          # 直接部署：使用docker compose down停止并删除旧容器，再启动新容器
+          echo "停止并删除旧容器..."
+          docker compose down --remove-orphans || echo "旧容器不存在或已停止删除"
           
-          echo "开始部署: $ORIGINAL_CONTAINER_NAME -> $NEW_CONTAINER_NAME"
+          echo "启动新容器..."
+          docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
           
-          # 启动新容器
-          CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
+          # 等待容器启动
+          echo "等待容器启动并检查健康状态..."
+          sleep 5
           
-          # 使用 Docker Compose 内置的 wait 功能等待容器健康
-          echo "等待新容器健康检查完成..."
-          if CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" wait app; then
-            echo "新容器启动成功且健康状态良好"
-          else
-            echo "[ERROR] 容器健康检查失败或超时"
-            docker logs "$NEW_CONTAINER_NAME" 2>/dev/null || echo "无法获取容器日志"
-            docker compose down
-            exit 1
-          fi
-          echo "打印新容器日志:"
-          docker logs "$NEW_CONTAINER_NAME"
+          echo "打印容器日志:"
+          docker logs "${{ env.CONTAINER_NAME }}"
           
-          echo "开始替换旧容器"
-          
-          # 停止并删除旧容器
-          docker stop "$ORIGINAL_CONTAINER_NAME" 2>/dev/null || echo "旧容器不存在或已停止"
-          docker rm -f "$ORIGINAL_CONTAINER_NAME" 2>/dev/null || echo "旧容器删除失败或不存在"
-          
-          # 重命名新容器
-          docker rename "$NEW_CONTAINER_NAME" "$ORIGINAL_CONTAINER_NAME"
-          
-          echo "无缝部署完成"
+          echo "部署完成"
 
       - name: 清理镜像
         run: |
