@@ -129,7 +129,7 @@ jobs:
             IMAGES_TO_DELETE=$(echo "$IMAGES" | tail -n $IMAGES_TO_DELETE)
             
             echo "删除 $IMAGES_TO_DELETE 个旧镜像..."
-            docker rmi -f $IMAGES_TO_DELETE
+            docker rmi -f $IMAGES_TO_DELETE || echo "删除镜像失败，跳过"
             echo "旧镜像清理完成"
           else
             echo "无需清理，当前镜像数量 ($TOTAL_IMAGES) 未超过保留数量 ($KEEP_LATEST)"
