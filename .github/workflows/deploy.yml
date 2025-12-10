@@ -94,20 +94,18 @@ jobs:
           # 启动新容器
           CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
           
-          # 等待容器启动并验证（使用健康检查代替硬编码sleep）
-          for i in {1..60}; do
-            if docker ps --filter "name=$NEW_CONTAINER_NAME" --filter "status=running" | grep -q "$NEW_CONTAINER_NAME"; then
-              echo "新容器启动成功"
-              break
-            fi
-            if [ $i -eq 60 ]; then
-              echo "[ERROR] 新容器启动超时"
-              docker logs "$NEW_CONTAINER_NAME" 2>/dev/null || echo "无法获取容器日志"
-              docker compose down
-              exit 1
-            fi
-            sleep 1
-          done
+          # 使用 Docker Compose 内置的 wait 功能等待容器健康
+          echo "等待新容器健康检查完成..."
+          if CONTAINER_NAME="$NEW_CONTAINER_NAME" docker compose --env-file "$GITHUB_WORKSPACE/.env" wait app; then
+            echo "新容器启动成功且健康状态良好"
+          else
+            echo "[ERROR] 容器健康检查失败或超时"
+            docker logs "$NEW_CONTAINER_NAME" 2>/dev/null || echo "无法获取容器日志"
+            docker compose down
+            exit 1
+          fi
+          echo "打印新容器日志:"
+          docker logs "$NEW_CONTAINER_NAME"
           
           echo "开始替换旧容器"
           
