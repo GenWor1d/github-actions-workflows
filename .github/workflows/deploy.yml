@@ -126,6 +126,6 @@ jobs:
 
           # 清理悬空镜像
           echo "清理悬空镜像..."
-          docker image prune -f
+          docker rmi $(docker images --format "table {{.Repository}}:{{.Tag}}" | grep "${{ env.PROJECT_NAME }}:${{ env.BRANCH_NAME }}" | tail -n +3)
           
           echo "镜像清理完成"
