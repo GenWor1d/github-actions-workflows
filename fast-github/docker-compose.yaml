@@ -1,10 +1,49 @@
-version: "3.7"
 services:
   fastgithub:
     image: slcnx/fastgithub
     container_name: fastgithub
     restart: always
+    # 使用host网络模式，直接使用宿主机网络栈
+    network_mode: host
     volumes:
-    - cacert:/fastgithub/cacert/
+      - cacert:/fastgithub/cacert/
+
+  github-runner:
+    image: myoung34/github-runner:latest
+    container_name: github-runner-${RUNNER_SCOPE}-${LABELS}
+    depends_on:
+      - fastgithub
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 仅在需要覆盖.env文件中的值时才在这里指定
+      RUNNER_NAME: "docker-runner-${LABELS}"  # 使用环境变量动态生成名称
+      
+      # 代理配置 - 使用127.0.0.1因为fastgithub使用host网络模式
+      HTTP_PROXY: "http://127.0.0.1:38457"
+      HTTPS_PROXY: "http://127.0.0.1:38457"
+      NO_PROXY: "localhost,127.0.0.1"
+    volumes:
+      # 挂载Docker socket（允许在runner中运行Docker命令）
+      - /var/run/docker.sock:/var/run/docker.sock
+      
+      # 持久化数据
+      - ./runner-data:/data
+      
+      # 挂载FastGitHub证书
+      - cacert:/tmp/cacert:ro
+    
+    # 初始化脚本，信任FastGitHub证书
+    entrypoint: >
+      sh -c "
+        cp /tmp/cacert/fastgithub.cer /usr/local/share/ca-certificates/fastgithub.crt &&
+        update-ca-certificates &&
+        /entrypoint.sh
+      "
+    
+    # 也使用host网络模式，以便访问fastgithub服务
+    network_mode: host
+
 volumes:
   cacert: {}
