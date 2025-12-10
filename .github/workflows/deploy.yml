@@ -96,9 +96,18 @@ jobs:
           echo "开始部署容器"
           echo "容器名称: ${{ env.CONTAINER_NAME }}"
           
-          # 直接部署：使用docker compose down停止并删除旧容器，再启动新容器
+          # 直接部署：使用docker stop和docker rm停止并删除旧容器，再启动新容器
           echo "停止并删除旧容器..."
-          docker compose --env-file "$GITHUB_WORKSPACE/.env" down --remove-orphans || echo "旧容器不存在或已停止删除"
+          
+          # 精确检查指定名称的容器是否存在
+          CONTAINER_EXISTS=$(docker container inspect -f '{{.Name}}' "${{ env.CONTAINER_NAME }}" 2>/dev/null)
+          if [ "$CONTAINER_EXISTS" == "/${{ env.CONTAINER_NAME }}" ]; then
+            echo "[INFO] 找到容器: ${{ env.CONTAINER_NAME }}"
+            docker stop "${{ env.CONTAINER_NAME }}" && echo "[INFO] 容器已停止"
+            docker rm "${{ env.CONTAINER_NAME }}" && echo "[INFO] 容器已删除"
+          else
+            echo "[INFO] 容器 ${{ env.CONTAINER_NAME }} 不存在，跳过停止和删除操作"
+          fi
           
           echo "启动新容器..."
           docker compose --env-file "$GITHUB_WORKSPACE/.env" up -d
