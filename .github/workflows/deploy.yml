@@ -10,6 +10,11 @@ on:
         required: false
         type: string
         default: 'deployment'
+      env-file:
+        description: 'Docker Compose 环境文件路径'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   deploy:
@@ -46,12 +51,20 @@ jobs:
           # 从.env文件加载变量到环境中（供后续步骤使用）
           set -a
           source $GITHUB_WORKSPACE/.env
+          if [ -n "${{ inputs.env-file }}" ]; then
+            source ${{ inputs.env-file }}
+          fi
           set +a
           
           # 将变量保存到GITHUB_ENV供后续步骤使用
           grep -v '^#' $GITHUB_WORKSPACE/.env >> $GITHUB_ENV
-          
+          if [ -n "${{ inputs.env-file }}" ]; then
+            grep -v '^#' ${{ inputs.env-file }} >> $GITHUB_ENV
+          fi
+
           echo "环境变量文件已生成:"
+          echo "当前环境变量:"
+          env | grep -v '^GITHUB_'
 
       - name: 配置网络
         run: |
