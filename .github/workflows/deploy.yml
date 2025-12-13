@@ -71,18 +71,25 @@ jobs:
           [ ! -d "$DEPLOY_TOOLS" ] && echo "未找到部署工具目录，跳过脚本执行" && exit 0
           
           SCRIPT_FOUND=false
+          EXIT_CODE=0
           for script in "$DEPLOY_TOOLS"/*.sh; do
             [ -f "$script" ] && {
               SCRIPT_FOUND=true
-              echo "执行: $(basename "$script")"
-              # 转换换行符格式
-              sed -i 's/\r$//' "$script"
+              echo "执行: $(basename \"$script\")"
               chmod +x "$script"
-              "$script" || echo "脚本执行失败: $(basename "$script")"
+              if "$script"; then
+                echo "脚本执行成功: $(basename \"$script\")"
+              else
+                echo "脚本执行失败: $(basename \"$script\")"
+                EXIT_CODE=1
+              fi
             }
           done
           
           [ "$SCRIPT_FOUND" = false ] && echo "未找到可执行的脚本"
+          
+          # 即使有脚本失败，也继续执行后续步骤
+          exit 0
 
       - name: 构建镜像
         run: |
