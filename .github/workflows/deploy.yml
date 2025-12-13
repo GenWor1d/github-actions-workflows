@@ -61,10 +61,26 @@ jobs:
 
       - name: 配置Docker环境
         run: |
+          # 创建Docker网络
           docker network create ${{ env.NETWORK_NAME }} 2>/dev/null || true
+
+      - name: 执行预部署脚本
+        run: |
+          # 执行部署工具目录下的自定义脚本
+          DEPLOY_TOOLS="$PWD/scripts"
+          [ ! -d "$DEPLOY_TOOLS" ] && echo "未找到部署工具目录，跳过脚本执行" && exit 0
           
-          PRE_SCRIPT="./scripts/pre-deploy.sh"
-          [ -f "$PRE_SCRIPT" ] && { chmod +x "$PRE_SCRIPT"; "$PRE_SCRIPT"; } || true
+          SCRIPT_FOUND=false
+          for script in "$DEPLOY_TOOLS"/*.sh; do
+            [ -f "$script" ] && {
+              SCRIPT_FOUND=true
+              echo "执行: $(basename "$script")"
+              chmod +x "$script"
+              "$script" || echo "脚本执行失败: $(basename "$script")"
+            }
+          done
+          
+          [ "$SCRIPT_FOUND" = false ] && echo "未找到可执行的脚本"
 
       - name: 构建镜像
         run: |
