@@ -86,11 +86,14 @@ jobs:
 
       - name: 部署容器
         run: |
-          # 停止并删除现有的容器、网络等资源（如果存在）
-          docker compose --env-file "$GITHUB_WORKSPACE/.env" --project-name "${{ env.PROJECT_NAME }}" down 2>/dev/null || echo "容器不存在或已停止"
+          # 直接使用容器名称强制删除现有容器（如果存在）
+          docker rm -f "${{ env.CONTAINER_NAME }}" 2>/dev/null || echo "容器不存在或已停止"
           
-          # 部署新容器，强制重新创建
-          docker compose --env-file "$GITHUB_WORKSPACE/.env" --project-name "${{ env.PROJECT_NAME }}" up -d --force-recreate
+          # 停止并删除现有的容器、网络等资源（如果存在）
+          docker compose --env-file "$GITHUB_WORKSPACE/.env" --project-name "${{ env.PROJECT_NAME }}" down --remove-orphans 2>/dev/null || echo "容器不存在或已停止"
+          
+          # 部署新容器，强制重新创建并删除孤立容器
+          docker compose --env-file "$GITHUB_WORKSPACE/.env" --project-name "${{ env.PROJECT_NAME }}" up -d --force-recreate --remove-orphans
           
           # 等待容器启动并检查日志
           sleep 5
