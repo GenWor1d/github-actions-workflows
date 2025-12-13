@@ -18,7 +18,7 @@ on:
 
 jobs:
   deploy:
-    name: 部署${{ inputs.branch }}环境-${{ github.run_number }}
+    name: 部署${{ inputs.branch }}-${{ github.run_number }}
     runs-on: ${{ github.ref_name }}
     defaults:
       run:
@@ -28,88 +28,70 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 生成环境变量
-        id: gen_env
+      - name: 设置环境变量
         run: |
-          # 生成核心环境变量
           IMAGE_TAG="${{ inputs.branch }}-$(TZ='Asia/Shanghai' date +%Y%m%d-%H%M%S)"
           PROJECT_NAME=$(basename $GITHUB_WORKSPACE | tr '[:upper:]' '[:lower:]')
           
-          # 定义基本环境变量
-          BRANCH_NAME=${{ inputs.branch }}
-          CONTAINER_NAME=$PROJECT_NAME
-          NETWORK_NAME=gen-world-bridge
-
-          echo "分支: ${{ inputs.branch }}"
-          echo "项目名称: $PROJECT_NAME"
-          echo "镜像标签: $IMAGE_TAG"
-
-          # 保存默认环境变量到.env文件
-
+          echo "部署信息:"
+          echo "  分支: ${{ inputs.branch }}"
+          echo "  项目: $PROJECT_NAME"
+          echo "  标签: $IMAGE_TAG"
           
-          # 保存到GITHUB_ENV供后续步骤使用
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          # 保存环境变量
+          echo "BRANCH_NAME=${{ inputs.branch }}" >> $GITHUB_ENV
           echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=$CONTAINER_NAME" >> $GITHUB_ENV
-          echo "NETWORK_NAME=$NETWORK_NAME" >> $GITHUB_ENV
-          
-          # 创建.env文件供docker-compose使用
-          cat > $GITHUB_WORKSPACE/.env << EOF
-          BRANCH_NAME=$BRANCH_NAME
-          PROJECT_NAME=$PROJECT_NAME
-          IMAGE_TAG=$IMAGE_TAG
-          CONTAINER_NAME=$CONTAINER_NAME
-          NETWORK_NAME=$NETWORK_NAME
+          echo "CONTAINER_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+          echo "NETWORK_NAME=gen-world-bridge" >> $GITHUB_ENV
+
+      - name: 创建配置文件
+        run: |
+          # 创建基础配置文件
+          cat > .env << EOF
+          BRANCH_NAME=${{ env.BRANCH_NAME }}
+          PROJECT_NAME=${{ env.PROJECT_NAME }}
+          IMAGE_TAG=${{ env.IMAGE_TAG }}
+          CONTAINER_NAME=${{ env.CONTAINER_NAME }}
+          NETWORK_NAME=${{ env.NETWORK_NAME }}
           EOF
           
-          # 如果提供了环境文件，合并到.env中（实现覆盖）
-          if [ -n "${{ inputs.env-file }}" ]; then
-            cat ${{ inputs.env-file }} >> $GITHUB_WORKSPACE/.env
-          fi
+          # 合并自定义环境文件
+          [ -n "${{ inputs.env-file }}" ] && cat ${{ inputs.env-file }} >> .env || true
 
-      - name: 配置网络
+      - name: 配置Docker环境
         run: |
-          docker network create ${{ env.NETWORK_NAME }} 2>/dev/null || echo "网络已存在"
-
-      - name: 执行预部署脚本
-        run: |
-          PRE_DEPLOY_SCRIPT="./scripts/pre-deploy.sh"
-          if [ -f "$PRE_DEPLOY_SCRIPT" ]; then
-            chmod +x "$PRE_DEPLOY_SCRIPT"
-            "./$PRE_DEPLOY_SCRIPT"
-          fi
-
-      - name: 构建Docker镜像
-        run: |
-          docker compose --env-file $GITHUB_WORKSPACE/.env --project-name "${{ env.PROJECT_NAME }}" build
-
-      - name: 部署容器
-        run: |
-          # 直接使用容器名称强制删除现有容器（如果存在）
-          docker rm -f "${{ env.CONTAINER_NAME }}" 2>/dev/null || echo "容器不存在或已停止"
+          docker network create ${{ env.NETWORK_NAME }} 2>/dev/null || true
           
-          # 停止并删除现有的容器、网络等资源（如果存在）
-          docker compose --env-file "$GITHUB_WORKSPACE/.env" --project-name "${{ env.PROJECT_NAME }}" down --remove-orphans 2>/dev/null || echo "容器不存在或已停止"
-          
-          # 部署新容器，强制重新创建并删除孤立容器
-          docker compose --env-file "$GITHUB_WORKSPACE/.env" --project-name "${{ env.PROJECT_NAME }}" up -d --force-recreate --remove-orphans
-          
-          # 等待容器启动并检查日志
+          PRE_SCRIPT="./scripts/pre-deploy.sh"
+          [ -f "$PRE_SCRIPT" ] && { chmod +x "$PRE_SCRIPT"; "$PRE_SCRIPT"; } || true
+
+      - name: 构建镜像
+        run: |
+          echo "构建Docker镜像..."
+          docker compose --env-file .env --project-name "${{ env.PROJECT_NAME }}" build
+
+      - name: 清理旧容器
+        run: |
+          echo "清理现有容器..."
+          docker rm -f "${{ env.CONTAINER_NAME }}" 2>/dev/null || true
+          docker compose --env-file .env --project-name "${{ env.PROJECT_NAME }}" down --remove-orphans 2>/dev/null || true
+
+      - name: 部署服务
+        run: |
+          echo "启动新容器..."
+          docker compose --env-file .env --project-name "${{ env.PROJECT_NAME }}" up -d --force-recreate
           sleep 5
-          docker logs "${{ env.CONTAINER_NAME }}"
+          docker logs "${{ env.CONTAINER_NAME }}" --tail 20
 
-      - name: 清理旧镜像
+      - name: 清理镜像
         run: |
-          # 保留最新的2个镜像，删除旧镜像
-          IMAGES_TO_REMOVE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${{ env.PROJECT_NAME }}:${{ env.BRANCH_NAME }}-" | sort -r | tail -n +3)
+          OLD_IMAGES=$(docker images --format "{{.Repository}}:{{.Tag}}" | \
+                     grep "^${{ env.PROJECT_NAME }}:${{ env.BRANCH_NAME }}-" | \
+                     sort -r | tail -n +3)
           
-            echo "将清理以下镜像："
-            echo "$IMAGES_TO_REMOVE"
-
-
-          if [ -n "$IMAGES_TO_REMOVE" ]; then
-            for IMAGE in $IMAGES_TO_REMOVE; do
-              docker rmi $IMAGE 2>/dev/null || true
-            done
-          fi
+          [ -n "$OLD_IMAGES" ] && {
+            echo "清理旧镜像:"
+            echo "$OLD_IMAGES"
+            echo "$OLD_IMAGES" | xargs -r docker rmi 2>/dev/null || true
+          } || echo "无需清理镜像"
