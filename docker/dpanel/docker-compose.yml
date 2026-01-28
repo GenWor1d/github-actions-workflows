@@ -1,0 +1,32 @@
+services:
+  dpanel:
+    image: dpanel/dpanel:latest
+    container_name: dpanel
+    env_file:
+      - .env
+    environment:
+      - DPANEL_USERNAME=${DPANEL_USERNAME}
+      - DPANEL_PASSWORD=${DPANEL_PASSWORD}
+    ports:
+      - "${DPANEL_PORT}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - dpanel_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - gen-world-bridge
+
+volumes:
+  dpanel_data:
+    name: gen-world_dpanel_data
+
+networks:
+  gen-world-bridge:
+    name: gen-world-bridge
+    driver: bridge
+    external: true

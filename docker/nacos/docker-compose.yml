@@ -1,0 +1,42 @@
+services:
+  nacos:
+    image: nacos/nacos-server:v2.3.0
+    container_name: nacos
+    env_file:
+      - .env
+    environment:
+      - MODE=${NACOS_MODE}
+      - NACOS_AUTH_ENABLE=${NACOS_AUTH_ENABLE}
+      - NACOS_AUTH_TOKEN=SecretKey012345678901234567890123456789012345678901234567890123456789
+      - NACOS_AUTH_IDENTITY_KEY=nacos
+      - NACOS_AUTH_IDENTITY_VALUE=nacos
+      - JVM_XMS=${JVM_XMS}
+      - JVM_XMX=${JVM_XMX}
+      - JVM_XMN=${JVM_XMN}
+    ports:
+      - "${NACOS_PORT}:8848"
+      - "9848:9848"
+      - "9849:9849"
+    volumes:
+      - nacos_data:/home/nacos/data
+      - nacos_logs:/home/nacos/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8848/nacos/v1/ns/operator/metrics || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - gen-world-bridge
+
+volumes:
+  nacos_data:
+    name: gen-world_nacos_data
+  nacos_logs:
+    name: gen-world_nacos_logs
+
+networks:
+  gen-world-bridge:
+    name: gen-world-bridge
+    driver: bridge
+    external: true
